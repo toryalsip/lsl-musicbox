@@ -9,6 +9,8 @@ integer totalClips;
 float MAX_CLIP_DURATION = 29.9; // Needs to match the length of other clips
 float finalClipDuration = 29.9; // Needs to match the length of the final clip
 integer currentClip;
+integer dialogListener;
+integer DIALOG_CHANNEL = -99;
 
 default
 {
@@ -19,7 +21,7 @@ default
         llSetText(defaultText, textColor, OPAQUE);
     }
 
-    touch_start(integer total_number)
+    touch(integer total_number)
     {
         state playing;
     }
@@ -41,6 +43,23 @@ state playing
         llSetTimerEvent(0.5);
     }
 
+    touch(integer total_number)
+    {
+        key av = llDetectedKey(0);
+        dialogListener = llListen(DIALOG_CHANNEL, "", av, "");
+        llDialog(av, "\nStop playing?", ["Yes", "No"], DIALOG_CHANNEL);
+    }
+
+    listen(integer chan, string name, key id, string msg)
+    {
+
+        if (chan == DIALOG_CHANNEL && msg == "Yes")
+        {
+            llStopSound();
+            state default;
+        }
+    }
+
     timer()
     {
         currentClip += 1;
@@ -59,5 +78,10 @@ state playing
             llSetTimerEvent(0.0);
             state default;
         }
+    }
+
+    state_exit()
+    {
+        llListenRemove(dialogListener);
     }
 }
