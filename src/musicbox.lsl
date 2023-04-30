@@ -5,12 +5,16 @@ string songTitle = "<SONG TITLE GOES HERE>";
 vector textColor = <0.0, 1.0, 0.0>;
 float OPAQUE = 1.0;
 list audioClips = []; // place UUIDs or names of the audio clips here. If using names, they must reside in the object's inventory
-float finalClipDuration = 8.0;
+integer totalClips;
+float MAX_CLIP_DURATION = 29.9; // Needs to match the length of other clips
+float finalClipDuration = 29.9; // Needs to match the length of the final clip
+integer currentClip;
 
 default
 {
     state_entry()
     {
+        totalClips = llGetListLength(audioClips);
         llSay(0, greeting);
         llSetText(defaultText, textColor, OPAQUE);
     }
@@ -25,26 +29,35 @@ state playing
 {
     state_entry()
     {
+
         llSetText(preparingText, textColor, OPAQUE);        
         integer i;
-        for (i=0; i < llGetListLength(audioClips); ++i)
+        for (i=0; i < totalClips; ++i)
         {
             llPreloadSound(llList2Key(audioClips, i));
         }
         llSetText("Now playing \"" + songTitle + "\"", textColor, OPAQUE);
-        for (i=0; i < llGetListLength(audioClips); ++i)
+        currentClip = -1;
+        llSetTimerEvent(0.5);
+    }
+
+    timer()
+    {
+        currentClip += 1;
+        if (currentClip + 1 < totalClips)
         {
-            llPlaySound(llList2Key(audioClips, i), 1.0);
-            if (i < llGetListLength(audioClips))
-            {
-                llSleep(29.9);
-            }
-            else
-            {
-                llSleep(finalClipDuration);
-            }
+            llPlaySound(llList2Key(audioClips, currentClip), 1.0);
+            llSetTimerEvent(MAX_CLIP_DURATION);
         }
-        
-        state default;
+        else if (currentClip +1 == totalClips)
+        {
+            llPlaySound(llList2Key(audioClips, currentClip), 1.0);
+            llSetTimerEvent(finalClipDuration);
+        }
+        else
+        {
+            llSetTimerEvent(0.0);
+            state default;
+        }
     }
 }
