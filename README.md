@@ -9,4 +9,6 @@ Simple script you can place inside an object to play back audio clips in a seque
 5. Set `finalClipDuration` to the duration of the last clip in seconds
 
 ### Playing music
-Just touch the object, and the script will preload any clips and then start playing.
+To start playing, touch the object or say `START` in chat. The script will preload any clips and then start playing.
+
+To stop playing, touch the object and select `Yes` from the dialog or say `STOP` in chat.

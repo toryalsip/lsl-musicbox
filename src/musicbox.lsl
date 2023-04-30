@@ -1,5 +1,5 @@
 string greeting = "Greetings! Touch me to start playing!";
-string defaultText = "Touch to start!";
+string defaultText = "Touch or say START in chat to start!";
 string preparingText= "Preparing music...";
 string songTitle = "<SONG TITLE GOES HERE>";
 vector textColor = <0.0, 1.0, 0.0>;
@@ -10,20 +10,36 @@ float MAX_CLIP_DURATION = 29.9; // Needs to match the length of other clips
 float finalClipDuration = 29.9; // Needs to match the length of the final clip
 integer currentClip;
 integer dialogListener;
+integer chatListener;
 integer DIALOG_CHANNEL = -99;
 
 default
 {
     state_entry()
     {
+        chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
         totalClips = llGetListLength(audioClips);
         llSay(0, greeting);
         llSetText(defaultText, textColor, OPAQUE);
     }
 
+    listen(integer chan, string name, key id, string msg)
+    {
+
+        if (msg == "START")
+        {
+            state playing;
+        }
+    }
+
     touch(integer total_number)
     {
         state playing;
+    }
+
+    state_exit()
+    {
+        llListenRemove(chatListener);
     }
 }
 
@@ -31,14 +47,14 @@ state playing
 {
     state_entry()
     {
-
+        chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
         llSetText(preparingText, textColor, OPAQUE);        
         integer i;
         for (i=0; i < totalClips; ++i)
         {
             llPreloadSound(llList2Key(audioClips, i));
         }
-        llSetText("Now playing \"" + songTitle + "\"", textColor, OPAQUE);
+        llSetText("Now playing \"" + songTitle + "\"\nTouch or say STOP to stop.", textColor, OPAQUE);
         currentClip = -1;
         llSetTimerEvent(0.5);
     }
@@ -52,8 +68,7 @@ state playing
 
     listen(integer chan, string name, key id, string msg)
     {
-
-        if (chan == DIALOG_CHANNEL && msg == "Yes")
+        if (msg == "Yes" || msg == "STOP")
         {
             llStopSound();
             state default;
@@ -83,5 +98,6 @@ state playing
     state_exit()
     {
         llListenRemove(dialogListener);
+        llListenRemove(chatListener);
     }
 }
