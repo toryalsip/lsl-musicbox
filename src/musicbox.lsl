@@ -1,6 +1,6 @@
 string greeting = "Greetings! Touch me to start playing!";
 string defaultText = "Touch or say START in chat to start!";
-string preparingText= "Preparing music...";
+string preparingText= "Preparing music";
 string songTitle = "<SONG TITLE GOES HERE>";
 vector textColor = <0.0, 1.0, 0.0>;
 float OPAQUE = 1.0;
@@ -48,10 +48,10 @@ state playing
     state_entry()
     {
         chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
-        llSetText(preparingText, textColor, OPAQUE);        
         integer i;
         for (i=0; i < totalClips; ++i)
         {
+            llSetText(preparingText + " (" + (string)(i + 1) + "/" + (string)totalClips + ")" , textColor, OPAQUE);
             llPreloadSound(llList2Key(audioClips, i));
         }
         llSetText("Now playing \"" + songTitle + "\"\nTouch or say STOP to stop.", textColor, OPAQUE);
