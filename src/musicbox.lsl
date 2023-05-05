@@ -1,14 +1,14 @@
 key notecardQueryId; //Identifier for the dataserver event
-string configName = "CONFIG"; //Name of a notecard in the object's inventory.
 integer notecardLine; //Initialize the counter value at 0
 key notecardKey; //Store the notecard's key, so we don't read it again by accident.
 string greeting = "Greetings! Touch me to start playing!";
 string defaultText = "Touch or say START in chat to start!";
 string preparingText= "Preparing music...";
-string songTitle = "<SONG TITLE GOES HERE>";
+string songTitle;
 float soundVolume = 1.0;
 vector textColor = <0.0, 1.0, 0.0>;
 float OPAQUE = 1.0;
+list songs; // Each notecard will be treated as a song
 list audioClips; // place UUIDs or names of the audio clips here. If using names, they must reside in the object's inventory
 integer totalClips;
 float maxClipDuration = 29.9; // Needs to match the length of other clips
@@ -18,24 +18,34 @@ integer dialogListener;
 integer chatListener;
 integer DIALOG_CHANNEL = -99;
 
-ReadConfig()
+GetSongs()
 {
-    key configKey = llGetInventoryKey(configName);
+    songs = [];
+    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+    while (count--)
+    {
+        songs += llGetInventoryName(INVENTORY_ALL, count);
+    }
+}
+
+integer ReadSongNotecard()
+{
+    key configKey = llGetInventoryKey(songTitle);
     if (configKey == NULL_KEY)
     {
-        llOwnerSay( "Notecard '" + configName + "' missing or unwritten."); //Notify user.
-        return; //Don't do anything else.
+        llSay(PUBLIC_CHANNEL, "Notecard '" + songTitle + "' missing or unwritten."); //Notify user.
+        return FALSE; //Don't do anything else.
     }
-    else if (configKey == notecardKey) return;
     //This notecard has already been read - call to read was made in error, so don't do anything. (Notecards are assigned a new key each time they are saved.)
 
-    llOwnerSay("Reading config, please wait..."); //Notify user that read has started.
+    llSay(PUBLIC_CHANNEL, "Reading config, please wait..."); //Notify user that read has started.
     audioClips = [];
     totalClips = 0;
     notecardLine = 0;
 
     notecardKey = configKey;
-    notecardQueryId = llGetNotecardLine(configName, notecardLine);
+    notecardQueryId = llGetNotecardLine(songTitle, notecardLine);
+    return TRUE;
 }
 
 ParseConfigLine(string data)
@@ -49,8 +59,6 @@ ParseConfigLine(string data)
         finalClipDuration = (float)itemValue;
     else if (itemName == "maxClipDuration")
         maxClipDuration = (float)itemValue;
-    else if (itemName == "songTitle")
-        songTitle = itemValue;
     else if (itemName == "audioClips")
     {
         audioClips = llCSV2List(itemValue);
@@ -62,7 +70,7 @@ default
 {
     state_entry()
     {
-        ReadConfig();
+        GetSongs();
         chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
         llSay(0, greeting);
         llSetText(defaultText, textColor, OPAQUE);
@@ -72,7 +80,60 @@ default
     {
         if (change & CHANGED_INVENTORY)
         {
-            ReadConfig();
+            GetSongs();
+        }
+    }  
+
+    listen(integer chan, string name, key id, string msg)
+    {
+
+        if (chan == DIALOG_CHANNEL)
+        {
+            llListenRemove(dialogListener);
+            llSetTimerEvent(0.0);
+            songTitle = msg;
+            state reading;
+        }
+        else if (msg == "START")
+        {
+            dialogListener = llListen(DIALOG_CHANNEL, "", id, "");
+            llDialog(id, "\nSelect a song", songs, DIALOG_CHANNEL);
+            llSetTimerEvent(30.0);
+        }
+    }
+
+    touch(integer total_number)
+    {
+        key av = llDetectedKey(0);
+        dialogListener = llListen(DIALOG_CHANNEL, "", av, "");
+        llDialog(av, "\nSelect a song", songs, DIALOG_CHANNEL);
+        llSetTimerEvent(30.0);
+    }
+
+    timer()
+    {
+        llListenRemove(dialogListener);
+    }
+
+    // touch(integer total_number)
+    // {
+    //     state playing;
+    // }
+
+    state_exit()
+    {
+        llListenRemove(chatListener);
+    }
+}
+
+state reading
+{
+    state_entry()
+    {
+        llSetText("Reading notecard \"" + songTitle + "\"", textColor, OPAQUE);
+        if (!ReadSongNotecard())
+        {
+            state default;
         }
     }
 
@@ -82,35 +143,16 @@ default
         {
             if (data == EOF) //Reached end of notecard (End Of File).
             {
-                llOwnerSay("Done reading config!"); //Notify user.
+                llSay(PUBLIC_CHANNEL, "Done reading notecard!"); //Notify user.
+                state playing;
             }
             else
             {
                 ParseConfigLine(data); //Add the line being read to a new entry on the list.
                 ++notecardLine; //Increment line number (read next line).
-                notecardQueryId = llGetNotecardLine(configName, notecardLine); //Query the dataserver for the next notecard line.
+                notecardQueryId = llGetNotecardLine(songTitle, notecardLine); //Query the dataserver for the next notecard line.
             }
         }
-    }
-    
-
-    listen(integer chan, string name, key id, string msg)
-    {
-
-        if (msg == "START")
-        {
-            state playing;
-        }
-    }
-
-    touch(integer total_number)
-    {
-        state playing;
-    }
-
-    state_exit()
-    {
-        llListenRemove(chatListener);
     }
 }
 
