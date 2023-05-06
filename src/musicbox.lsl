@@ -161,7 +161,6 @@ state playing
     state_entry()
     {
         chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
-        llSetText(preparingText, textColor, OPAQUE);        
         integer i;
         for (i=0; i < totalClips; ++i)
         {
