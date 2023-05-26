@@ -24,7 +24,7 @@ GetSongs()
     integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
     while (count--)
     {
-        songs += llGetInventoryName(INVENTORY_ALL, count);
+        songs += llGetInventoryName(INVENTORY_NOTECARD, count);
     }
 }
 
