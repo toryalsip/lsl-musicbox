@@ -13,6 +13,7 @@ list audioClips; // place UUIDs or names of the audio clips here. If using names
 integer totalClips;
 float maxClipDuration = 29.9; // Needs to match the length of other clips
 float finalClipDuration = 29.9; // Needs to match the length of the final clip
+string looping = "off";
 integer currentClip;
 integer dialogListener;
 integer chatListener;
@@ -59,6 +60,8 @@ ParseConfigLine(string data)
         finalClipDuration = (float)itemValue;
     else if (itemName == "maxClipDuration")
         maxClipDuration = (float)itemValue;
+    else if (itemName == "looping")
+        looping = itemValue;
     else if (itemName == "audioClips")
     {
         audioClips = llCSV2List(itemValue);
@@ -200,6 +203,9 @@ state playing
         {
             llPlaySound(llList2String(audioClips, currentClip), soundVolume);
             llSetTimerEvent(finalClipDuration);
+            if (looping == "on") {
+                currentClip = -1;
+            }
         }
         else
         {
