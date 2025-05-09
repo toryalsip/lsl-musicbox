@@ -2,7 +2,6 @@ key notecardQueryId; //Identifier for the dataserver event
 integer notecardLine; //Initialize the counter value at 0
 key notecardKey; //Store the notecard's key, so we don't read it again by accident.
 string greeting = "Greetings! Touch me to start playing!";
-string defaultText = "Touch or say START in chat to start!";
 string preparingText= "Preparing music...";
 string songTitle;
 float soundVolume = 1.0;
@@ -74,9 +73,8 @@ default
     state_entry()
     {
         GetSongs();
-        chatListener = llListen(PUBLIC_CHANNEL, "", NULL_KEY, "");
         llSay(0, greeting);
-        llSetText(defaultText, textColor, OPAQUE);
+        llSetText("", textColor, OPAQUE);
     }
 
     changed(integer change)
@@ -96,12 +94,6 @@ default
             llSetTimerEvent(0.0);
             songTitle = msg;
             state reading;
-        }
-        else if (msg == "START")
-        {
-            dialogListener = llListen(DIALOG_CHANNEL, "", id, "");
-            llDialog(id, "\nSelect a song", songs, DIALOG_CHANNEL);
-            llSetTimerEvent(30.0);
         }
     }
 
@@ -170,7 +162,7 @@ state playing
             llSetText(preparingText + " (" + (string)(i + 1) + "/" + (string)totalClips + ")" , textColor, OPAQUE);
             llPreloadSound(llList2String(audioClips, i));
         }
-        llSetText("Now playing \"" + songTitle + "\"\nTouch or say STOP to stop.", textColor, OPAQUE);
+        llSetText("", textColor, OPAQUE);
         currentClip = -1;
         llSetTimerEvent(0.5);
     }
