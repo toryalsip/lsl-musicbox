@@ -14,7 +14,6 @@ The notecard contains pipe-delimited values. You will need to set these based on
 - `finalClipDuration`: Specifies the length of the last clip on the list. This defaults to 29.9 seconds, but most final clips are unlikely to be this so you'll probably want to set this.
 - `maxClipDuration`: Specifies how long the audio clips are (except for the last one on the list) in seconds. Defaults to 29.9 seconds. If you create your clips to be this length you do not need to send this.
 - `audioClips`: A comma-separated list of the names of the clips in the order they are to be played. The clips need to be in the object's inventory to work.
-- `looping`: (optional) on/off Determines if the song plays continuously in a loop.
 
 After you have created the notecard, give it a name. This should be the song title, as the script will use the name of the notecard for this purpose.
 
@@ -22,7 +21,6 @@ Example notecard.
 ```
 finalClipDuration|12.2
 audioClips|Clip 1,Clip 2,Clip 3,Clip 4
-looping|off
 ```
 
 #### 3. Add the `musicbox.lsl` script to your object.
@@ -31,3 +29,8 @@ looping|off
 To start playing, touch the object or say `START` in chat. The script will preload any clips and then start playing.
 
 To stop playing, touch the object and select `Yes` from the dialog or say `STOP` in chat.
+
+### Settings Menu
+The script also has an administrative menu which you can use to do the following
+- Volume: Used to set the volume that the music box will play in
+- Looping: Used to toggle music looping on and off.
