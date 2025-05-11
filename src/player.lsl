@@ -10,7 +10,20 @@ list settingsMenu = ["Volume", "Looping", "[Back]"];
 integer dialogListener;
 integer DIALOG_CHANNEL = -99;
 float DIALOG_TIMEOUT = 30.0;
-string currentSong;
+string currentSongScript;
+string currentSongTitle;
+string currentSongCredits;
+
+ResetGlobalState()
+{
+    if (currentSongScript != "")
+    {
+        llResetOtherScript(currentSongScript);
+    }
+    currentSongScript = "";
+    currentSongTitle = "";
+    currentSongCredits = "";
+}
 
 GetSongs()
 {
@@ -34,6 +47,7 @@ default
 {
     state_entry()
     {
+        ResetGlobalState();
         GetSongs();
         llSay(PUBLIC_CHANNEL, greeting);
         llSetText("", textColor, OPAQUE);
@@ -60,7 +74,8 @@ default
             }
             else
             {
-                list params = [SONG_TAG + msg, looping, soundVolume];
+                currentSongScript = SONG_TAG + msg;
+                list params = [currentSongScript, looping, soundVolume];
                 llMessageLinked(LINK_THIS, 0, llDumpList2String(params, "|"), id);
                 state waiting;
             }
@@ -100,8 +115,8 @@ state waiting
         list params = llParseString2List(msg, ["|"], []);
         if (llList2String(params, 0) == "playing")
         {
-            llSay(PUBLIC_CHANNEL, "Now playing " + llList2String(params, 1));
-            llSay(PUBLIC_CHANNEL, llList2String(params, 2));
+            currentSongTitle = llList2String(params, 1);
+            currentSongCredits = llList2String(params, 2);
             llSetTimerEvent(0.0);
             state playing;
         }
@@ -116,12 +131,37 @@ state waiting
 
 state playing
 {
+    touch(integer total_number)
+    {
+        key av = llDetectedKey(0);
+        llSetTimerEvent(DIALOG_TIMEOUT);
+        dialogListener = llListen(DIALOG_CHANNEL, "", av, "");
+        string dialogMessage = "Currently playing " + currentSongTitle + "\n" + currentSongCredits + "\n\nStop playing?";
+        llDialog(av, dialogMessage, ["Yes", "No"], DIALOG_CHANNEL);
+    }
+    
+    listen(integer chan, string name, key id, string msg)
+    {
+        llSetTimerEvent(0.0);
+        llListenRemove(dialogListener);
+        if (msg == "Yes")
+        {
+            state default;
+        }
+    }
+    
     link_message(integer source, integer num, string msg, key id)
     {
         if (msg == "done")
         {
+            currentSongScript = ""; // This is to prevent the script from being reset when we go back to the default state
             state default;
         }
+    }
+    
+    timer()
+    {
+        llListenRemove(dialogListener);
     }
 }
 
