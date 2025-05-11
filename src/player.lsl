@@ -146,6 +146,7 @@ state playing
         llListenRemove(dialogListener);
         if (msg == "Yes")
         {
+            llStopSound();
             state default;
         }
     }
