@@ -1,68 +1,43 @@
-key notecardQueryId; //Identifier for the dataserver event
-integer notecardLine; //Initialize the counter value at 0
-key notecardKey; //Store the notecard's key, so we don't read it again by accident.
 string greeting = "Greetings! Touch me to start playing!";
-string preparingText= "Preparing music...";
-string songTitle;
 float soundVolume = 1.0;
 vector textColor = <0.0, 1.0, 0.0>;
 float OPAQUE = 1.0;
-list songs; // Each notecard will be treated as a song
-list audioClips; // place UUIDs or names of the audio clips here. If using names, they must reside in the object's inventory
-integer totalClips;
-float maxClipDuration = 29.9; // Needs to match the length of other clips
-float finalClipDuration = 29.9; // Needs to match the length of the final clip
+list songs; // Songs are other scripts in the object name {SONG}song_name.
+string SONG_TAG = "{SONG}";
 string looping = "off";
 string settingsMenuName = "[ Settings ]";
 list settingsMenu = ["Volume", "Looping", "[Back]"];
-integer currentClip;
 integer dialogListener;
 integer DIALOG_CHANNEL = -99;
 float DIALOG_TIMEOUT = 30.0;
+string currentSongScript;
+string currentSongTitle;
+string currentSongCredits;
+
+ResetGlobalState()
+{
+    if (currentSongScript != "")
+    {
+        llResetOtherScript(currentSongScript);
+    }
+    currentSongScript = "";
+    currentSongTitle = "";
+    currentSongCredits = "";
+}
 
 GetSongs()
 {
     songs = [];
-    integer count = llGetInventoryNumber(INVENTORY_NOTECARD);
+    integer count = llGetInventoryNumber(INVENTORY_SCRIPT);
     while (count--)
     {
-        songs += llGetInventoryName(INVENTORY_NOTECARD, count);
-    }
-}
-
-integer ReadSongNotecard()
-{
-    key configKey = llGetInventoryKey(songTitle);
-    if (configKey == NULL_KEY)
-    {
-        llSay(PUBLIC_CHANNEL, "Notecard '" + songTitle + "' missing or unwritten."); //Notify user.
-        return FALSE; //Don't do anything else.
-    }
-    //This notecard has already been read - call to read was made in error, so don't do anything. (Notecards are assigned a new key each time they are saved.)
-
-    llSay(PUBLIC_CHANNEL, "Reading config, please wait..."); //Notify user that read has started.
-    audioClips = [];
-    totalClips = 0;
-    notecardLine = 0;
-
-    notecardKey = configKey;
-    notecardQueryId = llGetNotecardLine(songTitle, notecardLine);
-    return TRUE;
-}
-
-ParseConfigLine(string data)
-{
-    list items = llParseString2List(data, ["|"], []);
-    string itemName = llList2String(items, 0);
-    string itemValue = llList2String(items, 1);
-    if (itemName == "finalClipDuration")
-        finalClipDuration = (float)itemValue;
-    else if (itemName == "maxClipDuration")
-        maxClipDuration = (float)itemValue;
-    else if (itemName == "audioClips")
-    {
-        audioClips = llCSV2List(itemValue);
-        totalClips = llGetListLength(audioClips);
+        string scriptName = llGetInventoryName(INVENTORY_SCRIPT, count);
+        integer scriptNameLength = llStringLength(scriptName);
+        integer tagLength = llStringLength(SONG_TAG);
+        if (llGetSubString(scriptName, 0, tagLength -1) == SONG_TAG)
+        {
+            songs += llGetSubString(scriptName, tagLength, scriptNameLength - 1);
+        }
     }
 }
 
@@ -72,8 +47,9 @@ default
 {
     state_entry()
     {
+        ResetGlobalState();
         GetSongs();
-        llSay(0, greeting);
+        llSay(PUBLIC_CHANNEL, greeting);
         llSetText("", textColor, OPAQUE);
     }
 
@@ -98,8 +74,10 @@ default
             }
             else
             {
-                songTitle = msg;
-                state reading;
+                currentSongScript = SONG_TAG + msg;
+                list params = [currentSongScript, looping, soundVolume];
+                llMessageLinked(LINK_THIS, 0, llDumpList2String(params, "|"), id);
+                state waiting;
             }
         }
     }
@@ -124,6 +102,71 @@ default
     }
 }
 
+// This state is when a message has been sent to the song script and we are waiting for confirmation that it has started playing
+state waiting
+{
+    state_entry()
+    {
+        llSetTimerEvent(DIALOG_TIMEOUT);
+    }
+    
+    link_message(integer source, integer num, string msg, key id)
+    {
+        list params = llParseString2List(msg, ["|"], []);
+        if (llList2String(params, 0) == "playing")
+        {
+            currentSongTitle = llList2String(params, 1);
+            currentSongCredits = llList2String(params, 2);
+            llSetTimerEvent(0.0);
+            state playing;
+        }
+    }
+    
+    timer()
+    {
+        llSay(PUBLIC_CHANNEL, "Timeout waiting for script to respond");
+        state default;
+    }
+}
+
+state playing
+{
+    touch(integer total_number)
+    {
+        key av = llDetectedKey(0);
+        llSetTimerEvent(DIALOG_TIMEOUT);
+        dialogListener = llListen(DIALOG_CHANNEL, "", av, "");
+        string dialogMessage = "Currently playing " + currentSongTitle + "\n" + currentSongCredits + "\n\nStop playing?";
+        llDialog(av, dialogMessage, ["Yes", "No"], DIALOG_CHANNEL);
+    }
+    
+    listen(integer chan, string name, key id, string msg)
+    {
+        llSetTimerEvent(0.0);
+        llListenRemove(dialogListener);
+        if (msg == "Yes")
+        {
+            llStopSound();
+            state default;
+        }
+    }
+    
+    link_message(integer source, integer num, string msg, key id)
+    {
+        if (msg == "done")
+        {
+            currentSongScript = ""; // This is to prevent the script from being reset when we go back to the default state
+            state default;
+        }
+    }
+    
+    timer()
+    {
+        llListenRemove(dialogListener);
+    }
+}
+
+// Used to access the configuration menu and various submenu items
 state configuring
 {
     state_entry()
@@ -163,7 +206,7 @@ state configuring
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
     }
@@ -210,7 +253,7 @@ state configure_volume
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
     }
@@ -245,98 +288,8 @@ state configure_looping
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
-    }
-}
-
-state reading
-{
-    state_entry()
-    {
-        llSetText("Reading notecard \"" + songTitle + "\"", textColor, OPAQUE);
-        if (!ReadSongNotecard())
-        {
-            state default;
-        }
-    }
-
-    dataserver(key query_id, string data)
-    {
-        if (query_id == notecardQueryId)
-        {
-            if (data == EOF) //Reached end of notecard (End Of File).
-            {
-                llSay(PUBLIC_CHANNEL, "Done reading notecard!"); //Notify user.
-                state playing;
-            }
-            else
-            {
-                ParseConfigLine(data); //Add the line being read to a new entry on the list.
-                ++notecardLine; //Increment line number (read next line).
-                notecardQueryId = llGetNotecardLine(songTitle, notecardLine); //Query the dataserver for the next notecard line.
-            }
-        }
-    }
-}
-
-state playing
-{
-    state_entry()
-    {
-        integer i;
-        for (i=0; i < totalClips; ++i)
-        {
-            llSetText(preparingText + " (" + (string)(i + 1) + "/" + (string)totalClips + ")" , textColor, OPAQUE);
-            llPreloadSound(llList2String(audioClips, i));
-        }
-        llSetText("", textColor, OPAQUE);
-        currentClip = -1;
-        llSetTimerEvent(0.5);
-    }
-
-    touch(integer total_number)
-    {
-        key av = llDetectedKey(0);
-        dialogListener = llListen(DIALOG_CHANNEL, "", av, "");
-        llDialog(av, "\nStop playing?", ["Yes", "No"], DIALOG_CHANNEL);
-    }
-
-    listen(integer chan, string name, key id, string msg)
-    {
-        if (msg == "Yes")
-        {
-            llStopSound();
-            state default;
-        }
-    }
-
-    timer()
-    {
-        currentClip += 1;
-        if (currentClip + 1 < totalClips)
-        {
-            llPlaySound(llList2String(audioClips, currentClip), soundVolume);
-            llSetTimerEvent(maxClipDuration);
-        }
-        else if (currentClip +1 == totalClips)
-        {
-            llPlaySound(llList2String(audioClips, currentClip), soundVolume);
-            llSetTimerEvent(finalClipDuration);
-            if (looping == "on") {
-                currentClip = -1;
-            }
-        }
-        else
-        {
-            llSetTimerEvent(0.0);
-            state default;
-        }
-    }
-
-    state_exit()
-    {
-        llListenRemove(dialogListener);
     }
 }
