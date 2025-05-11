@@ -10,6 +10,7 @@ list settingsMenu = ["Volume", "Looping", "[Back]"];
 integer dialogListener;
 integer DIALOG_CHANNEL = -99;
 float DIALOG_TIMEOUT = 30.0;
+string currentSong;
 
 GetSongs()
 {
@@ -59,7 +60,9 @@ default
             }
             else
             {
-                llSay(PUBLIC_CHANNEL, "Playing " + msg);
+                list params = [SONG_TAG + msg, looping, soundVolume];
+                llMessageLinked(LINK_THIS, 0, llDumpList2String(params, "|"), id);
+                state waiting;
             }
         }
     }
@@ -84,6 +87,45 @@ default
     }
 }
 
+// This state is when a message has been sent to the song script and we are waiting for confirmation that it has started playing
+state waiting
+{
+    state_entry()
+    {
+        llSetTimerEvent(DIALOG_TIMEOUT);
+    }
+    
+    link_message(integer source, integer num, string msg, key id)
+    {
+        list params = llParseString2List(msg, ["|"], []);
+        if (llList2String(params, 0) == "playing")
+        {
+            llSay(PUBLIC_CHANNEL, "Now playing " + llList2String(params, 1));
+            llSay(PUBLIC_CHANNEL, llList2String(params, 2));
+            llSetTimerEvent(0.0);
+            state playing;
+        }
+    }
+    
+    timer()
+    {
+        llSay(PUBLIC_CHANNEL, "Timeout waiting for script to respond");
+        state default;
+    }
+}
+
+state playing
+{
+    link_message(integer source, integer num, string msg, key id)
+    {
+        if (msg == "done")
+        {
+            state default;
+        }
+    }
+}
+
+// Used to access the configuration menu and various submenu items
 state configuring
 {
     state_entry()
@@ -123,7 +165,7 @@ state configuring
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
     }
@@ -170,7 +212,7 @@ state configure_volume
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
     }
@@ -205,7 +247,7 @@ state configure_looping
     
     timer()
     {
-        llInstantMessage(llGetOwner(), "Settings menu timed out.");
+        llOwnerSay("Settings menu timed out.");
         llListenRemove(dialogListener);
         state default;
     }
