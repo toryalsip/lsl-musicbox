@@ -83,9 +83,15 @@ state playing
         }
         else
         {
-            llSetTimerEvent(0.0);
             llMessageLinked(LINK_THIS, 0, "done", currentId);
             state default;
         }
+    }
+
+    state_exit()
+    {
+        // Cleanup tasks to assure we aren't still trying to play when the main script says to stop
+        llSetTimerEvent(0.0);
+        llStopSound();
     }
 }
