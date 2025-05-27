@@ -20,12 +20,24 @@ function stopPlaying()
     ll.Say(PUBLIC_CHANNEL, "Stopped playing")
 end
 
+local playbackCoroutine = nil
+
+function playClipsCoroutine()
+    for i, clip in ipairs(settings.audioClips) do
+        ll.PlaySound(clip.name, settings.soundVolume)
+        ll.SetTimerEvent(clip.duration)
+        coroutine.yield() -- Pause here until timer resumes us
+    end
+    stopPlaying()
+end
+
 function startPlaying()
     currentClip = 0
     preloadSounds(settings.audioClips)
     ll.SetText("" , settings.textColor, 1.0)
-    ll.SetTimerEvent(0.5)
     isPlaying = true
+    playbackCoroutine = coroutine.create(playClipsCoroutine)
+    ll.SetTimerEvent(0.5) -- Kick off the first timer event
 end
 
 -- Preloading clips allows us to have them ready to play immediately
@@ -39,11 +51,8 @@ function preloadSounds(clips)
 end
 
 function timer()
-    currentClip += 1
-    local clip = settings.audioClips[currentClip]
-    if clip then
-        ll.PlaySound(clip.name, settings.soundVolume)
-        ll.SetTimerEvent(clip.duration)
+    if playbackCoroutine and coroutine.status(playbackCoroutine) ~= "dead" then
+        coroutine.resume(playbackCoroutine)
     else
         stopPlaying()
     end
