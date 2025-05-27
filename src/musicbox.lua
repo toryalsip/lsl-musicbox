@@ -11,16 +11,16 @@ local settings = {
         --{ name = "Example 3", duration = 8.0 }
     }
 }
+local playbackCoroutine = nil
 
 function stopPlaying()
     ll.SetText("" , settings.textColor, 1.0)
     ll.StopSound()
     ll.SetTimerEvent(0)
     isPlaying = false
+    playbackCoroutine = nil -- Cleanup reference
     ll.Say(PUBLIC_CHANNEL, "Stopped playing")
 end
-
-local playbackCoroutine = nil
 
 function playClipsCoroutine()
     for i, clip in ipairs(settings.audioClips) do
