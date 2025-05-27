@@ -17,7 +17,6 @@ function stopPlaying()
     ll.SetText("" , settings.textColor, 1.0)
     ll.StopSound()
     ll.SetTimerEvent(0)
-    isPlaying = false
     playbackCoroutine = nil -- Cleanup reference
     ll.Say(PUBLIC_CHANNEL, "Stopped playing")
 end
@@ -26,7 +25,7 @@ function playClipsCoroutine()
     for i, clip in ipairs(settings.audioClips) do
         ll.PlaySound(clip.name, settings.soundVolume)
         ll.SetTimerEvent(clip.duration)
-        coroutine.yield() -- Pause here until timer resumes us
+        coroutine.yield()
     end
     stopPlaying()
 end
@@ -34,9 +33,8 @@ end
 function startPlaying()
     currentClip = 0
     preloadSounds(settings.audioClips)
-    isPlaying = true
     playbackCoroutine = coroutine.create(playClipsCoroutine)
-    ll.SetTimerEvent(0.5) -- Kick off the first timer event
+    ll.SetTimerEvent(0.5)
 end
 
 -- Preloading clips allows us to have them ready to play immediately
@@ -50,8 +48,12 @@ function preloadSounds(clips)
     ll.SetText("" , settings.textColor, 1.0)
 end
 
+local function isPlaybackActive()
+    return playbackCoroutine and coroutine.status(playbackCoroutine) ~= "dead"
+end
+
 function timer()
-    if playbackCoroutine and coroutine.status(playbackCoroutine) ~= "dead" then
+    if isPlaybackActive() then
         coroutine.resume(playbackCoroutine)
     else
         stopPlaying()
@@ -63,11 +65,11 @@ function state_entry()
 end
 
 function touch_start(total_number)
-   if isPlaying then
-      stopPlaying()
-   else
-       startPlaying()
-   end
+    if isPlaybackActive() then
+        stopPlaying()
+    else
+        startPlaying()
+    end
 end
 
 -- Simulate the state_entry event
