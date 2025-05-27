@@ -34,7 +34,6 @@ end
 function startPlaying()
     currentClip = 0
     preloadSounds(settings.audioClips)
-    ll.SetText("" , settings.textColor, 1.0)
     isPlaying = true
     playbackCoroutine = coroutine.create(playClipsCoroutine)
     ll.SetTimerEvent(0.5) -- Kick off the first timer event
@@ -48,6 +47,7 @@ function preloadSounds(clips)
         ll.SetText(`{settings.preparingText} ({index}/{totalClips})` , settings.textColor, 1.0)
         ll.PreloadSound(clip.name)
     end
+    ll.SetText("" , settings.textColor, 1.0)
 end
 
 function timer()
